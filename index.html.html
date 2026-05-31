@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ตารางเรียน โรงเรียนวัดเสนาสน์ ปีการศึกษา 2569</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- html2canvas for saving as image -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        .schedule-cell {
+            transition: all 0.2s ease;
+        }
+        .schedule-cell:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+        .hide-scroll::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scroll {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .tab-btn.active {
+            background-color: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5);
+        }
+    </style>
+</head>
+<body class="min-h-screen py-10 px-4 sm:px-6 lg:px-8">
+
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-slate-800 mb-2">🏫 ตารางเรียน โรงเรียนวัดเสนาสน์</h1>
+            <p class="text-lg text-slate-600">ภาคเรียนที่ 1 ปีการศึกษา 2569</p>
+        </div>
+
+        <!-- Legend (Teacher Colors) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-10">
+            <h2 class="text-xl font-semibold mb-4 text-center">🎨 รหัสสีคุณครูผู้สอน</h2>
+            <div class="flex flex-wrap justify-center gap-3" id="legend-container">
+                <!-- Legend items injected via JS -->
+            </div>
+        </div>
+
+        <!-- Controls: Tabs & Download Button -->
+        <div class="flex flex-col xl:flex-row justify-between items-center gap-6 mb-8">
+            <!-- Grade Tabs -->
+            <div class="flex flex-wrap justify-center xl:justify-start gap-2" id="tabs-container">
+                <!-- Tabs injected via JS -->
+            </div>
+            
+            <!-- Download Button -->
+            <button onclick="downloadAsImage()" class="group flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 whitespace-nowrap">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                บันทึกเป็นรูปภาพ
+            </button>
+        </div>
+
+        <!-- Schedule Container -->
+        <div id="schedule-container" class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+            <!-- Tables injected via JS -->
+        </div>
+    </div>
+
+    <!-- Data & Application Logic -->
+    <script>
+        // 1. Teacher Color Mapping
+        const teachers = [
+            { name: "นางเรณู ทองสอาด", colorClass: "bg-red-100 border-red-200 text-red-900", icon: "🔴" },
+            { name: "นางสาวกนกวลี เกิดศรี", colorClass: "bg-orange-100 border-orange-200 text-orange-900", icon: "🟠" },
+            { name: "นางสาวอุไรทิพย์ ชาวนา", colorClass: "bg-green-100 border-green-200 text-green-900", icon: "🟢" },
+            { name: "นางสาววาสิณี หมื่นจิตร", colorClass: "bg-blue-100 border-blue-200 text-blue-900", icon: "🔵" },
+            { name: "นางสาวจินดารัตน์ ไชยชนะ", colorClass: "bg-purple-100 border-purple-200 text-purple-900", icon: "🟣" },
+            { name: "นางนฤมล ลุ้ยอุไร", colorClass: "bg-yellow-100 border-yellow-300 text-yellow-900", icon: "🟡" },
+            { name: "นางทัศนา พรมมา", colorClass: "bg-amber-100 border-amber-200 text-amber-900", icon: "🟤" }, 
+            { name: "นางสาววรุณยุพา ปานอยู่", colorClass: "bg-sky-200 border-sky-300 text-sky-900", icon: "🟦" },
+            { name: "นางรัตติญา บุญเอี่ยม", colorClass: "bg-pink-100 border-pink-200 text-pink-900", icon: "🌸" },
+            { name: "นางสายยนต์ บุญเหลือ", colorClass: "bg-gray-100 border-gray-200 text-gray-900", icon: "⚪" },
+            { name: "นายศรัณญู พลเยี่ยม", colorClass: "bg-emerald-200 border-emerald-300 text-emerald-900", icon: "🌲" },
+            { name: "นายณัฐพงศ์ นิ่มกลัด", colorClass: "bg-teal-100 border-teal-200 text-teal-900", icon: "🌊" },
+            { name: "นายพลายงาม บุญญะ", colorClass: "bg-rose-100 border-rose-200 text-rose-900", icon: "🍷" }
+        ];
+
+        // 2. Subject Emoji Mapping
+        const emojis = [
+            { keywords: ["คณิต", "คำนวณ"], emoji: "🧮" },
+            { keywords: ["วิทยาศาสตร์", "เคมี", "เชื้อเพลิง", "นักวิทยาศาสตร์"], emoji: "🔬" },
+            { keywords: ["ไทย", "อ่าน", "เขียน", "รักการอ่าน"], emoji: "🇹🇭" },
+            { keywords: ["อังกฤษ"], emoji: "🇬🇧" },
+            { keywords: ["สังคม", "ประวัติศาสตร์", "ทุจริต", "พลเมือง", "เศรษฐกิจ"], emoji: "🌍" },
+            { keywords: ["สุขศึกษา", "พละ", "พลศึกษา", "สุขภาพกาย"], emoji: "⚽" },
+            { keywords: ["ศิลปะ", "ดนตรี", "ศิลป์"], emoji: "🎨" },
+            { keywords: ["การงาน", "อาชีพ"], emoji: "🛠️" },
+            { keywords: ["วิทยาการคำนวณ"], emoji: "💻" },
+            { keywords: ["แนะแนว", "จิตสาธารณะ", "ลดเวลาเรียน", "พัฒนาผู้เรียน", "การเรียนรู้", "อนุรักษ์", "ครอบครัว", "ชีวิต"], emoji: "🌱" },
+            { keywords: ["ลูกเสือ"], emoji: "⚜️" },
+            { keywords: ["สวดมนต์"], emoji: "🙏" }
+        ];
+
+        // 3. Class Images Mapping
+        const classImages = {
+            "ป.1/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=P1&backgroundColor=ffdfbf",
+            "ป.2/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=P2&backgroundColor=c0aede",
+            "ป.3/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=P3&backgroundColor=b6e3f4",
+            "ป.4/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=P4&backgroundColor=ffd5dc",
+            "ป.5/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=P5&backgroundColor=d1d4f9",
+            "ป.6/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=P6&backgroundColor=ffdfbf",
+            "ม.1/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=M1&backgroundColor=c0aede",
+            "ม.2/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=M2&backgroundColor=b6e3f4",
+            "ม.3/1": "https://api.dicebear.com/9.x/fun-emoji/svg?seed=M3&backgroundColor=ffd5dc"
+        };
+
+        // 4. Raw Data Extracted from Document
+        const rawMarkdown = `
+ตารางเรียน
+ชั้น ป.1/1
+| คาบที่ 1 08:30–09:30 | ภาษาอังกฤษ 1 นางสาวกนกวลี เกิดศรี | รักการอ่าน 1 นางเรณู ทองสอาด | การอ่านและการเขียนเพื่อการสื่อสาร 1 นางเรณู ทองสอาด | ภาษาอังกฤษ 1 นางสาวกนกวลี เกิดศรี | หนูน้อยนักเขียน 1 นางเรณู ทองสอาด |
+| คาบที่ 2 09:30–10:30 | การอ่านและการเขียนเพื่อการสื่อสาร 1 นางเรณู ทองสอาด | คณิตศาสตร์ 1 นางเรณู ทองสอาด | การอ่านและการเขียนเพื่อการสื่อสาร 1 นางเรณู ทองสอาด | นักวิทยาศาสตร์น้อย 1 นางสาวอุไรทิพย์ ชาวนา | คณิตศาสตร์ 1 นางเรณู ทองสอาด |
+| คาบที่ 3 10:30–11:30 | การเรียนรู้เพื่อชีวิต 1 นางสาววาสิณี หมื่นจิตร | การอ่านและการเขียนเพื่อการสื่อสาร 1 นางเรณู ทองสอาด | คณิตศาสตร์ 1 นางเรณู ทองสอาด | คณิตศาสตร์ 1 นางเรณู ทองสอาด | คณิตศาสตร์ 1 นางเรณู ทองสอาด |
+| คาบที่ 4 12:30–13:30 | การอ่านและการเขียนเพื่อการสื่อสาร 1 นางเรณู ทองสอาด | นักอนุรักษ์ตัวน้อย 1 นางสาวอุไรทิพย์ ชาวนา | วิทยาการคำนวณ 1 นางสาวจินดารัตน์ ไชยชนะ | ลดเวลาเรียนเพิ่มเวลารู้ 1 นางเรณู ทองสอาด | ภาษาอังกฤษ 1 นางสาวกนกวลี เกิดศรี |
+| คาบที่ 5 13:30–14:30 | ครอบครัวของฉัน 1 นางเรณู ทองสอาด | ภาษาอังกฤษ 1 นางสาวกนกวลี เกิดศรี | ภาษาอังกฤษ 1 นางสาวกนกวลี เกิดศรี | ศิลปะและวัฒนธรรม 1 นางเรณู ทองสอาด | พัฒนาผู้เรียน 1 นางเรณู ทองสอาด |
+| คาบที่ 6 14:30–15:30 | ลดเวลาเรียนเพิ่มเวลารู้ 1 นางเรณู ทองสอาด | ลดเวลาเรียนเพิ่มเวลารู้ 1 นางเรณู ทองสอาด | สุขศึกษาพลศึกษา 1 นางเรณู ทองสอาด | ลูกเสือสำรอง 1 นางเรณู ทองสอาด | สวดมนต์1 นางเรณู ทองสอาด |
+| คาบที่ 7 15:30–16:00 | | | | | |
+
+ตารางเรียน
+ชั้น ป.2/1
+| คาบที่ 1 08:30–09:30 | ครอบครัวของฉัน 2 นางทัศนา พรมมา | คณิตศาสตร์ 2 นางทัศนา พรมมา | ภาษาอังกฤษ 2 นางสาววรุณยุพา ปานอยู่ | คณิตศาสตร์ 2 นางทัศนา พรมมา | คณิตศาสตร์ 2 นางทัศนา พรมมา |
+| คาบที่ 2 09:30–10:30 | การอ่านและการเขียนเพื่อการสื่อสาร 2 นางทัศนา พรมมา | การอ่านและการเขียนเพื่อการสื่อสาร 2 นางทัศนา พรมมา | การอ่านและการเขียนเพื่อการสื่อสาร 2 นางทัศนา พรมมา | คณิตศาสตร์ 2 นางทัศนา พรมมา | การเรียนรู้เพื่อชีวิต 2 นางสาววาสิณี หมื่นจิตร |
+| คาบที่ 3 10:30–11:30 | นักอนุรักษ์ตัวน้อย 2 นางสาวอุไรทิพย์ ชาวนา | ศิลปะและวัฒนธรรม 2 นางสาววาสิณี หมื่นจิตร | การอ่านและการเขียนเพื่อการสื่อสาร 2 นางทัศนา พรมมา | ภาษาอังกฤษ 2 นางสาววรุณยุพา ปานอยู่ | ภาษาอังกฤษ 2 นางสาววรุณยุพา ปานอยู่ |
+| คาบที่ 4 12:30–13:30 | การอ่านและการเขียนเพื่อการสื่อสาร 2 นางทัศนา พรมมา | พัฒนาผู้เรียน 2 นางทัศนา พรมมา | คณิตศาสตร์ 2 นางทัศนา พรมมา | นักวิทยาศาสตร์น้อย 2 นางสาวอุไรทิพย์ ชาวนา | วิทยาการคำนวณ 2 นางสาวจินดารัตน์ ไชยชนะ |
+| คาบที่ 5 13:30–14:30 | ลดเวลาเรียนเพิ่มเวลารู้ 2 นางทัศนา พรมมา | ภาษาอังกฤษ 2 นางสาววรุณยุพา ปานอยู่ | หนูน้อยนักเขียน 2 นางเรณู ทองสอาด | ลดเวลาเรียนเพิ่มเวลารู้ 2 นางทัศนา พรมมา | รักการอ่าน 2 นางทัศนา พรมมา |
+| คาบที่ 6 14:30–15:30 | ภาษาอังกฤษ 2 นางสาววรุณยุพา ปานอยู่ | ลดเวลาเรียนเพิ่มเวลารู้ 2 นางทัศนา พรมมา | สุขศึกษาพลศึกษา 2 นางทัศนา พรมมา | ลูกเสือสำรอง 2 นางทัศนา พรมมา | สวดมนต์ 2 นางทัศนา พรมมา |
+| คาบที่ 7 15:30–16:00 | | | | | |
+
+ตารางเรียน
+ชั้น ป.3/1
+| คาบที่ 1 08:30–09:30 | คณิตศาสตร์ 3 นางนฤมล ลุ้ยอุไร | การอ่านและการเขียนเพื่อการสื่อสาร 3 นางรัตติญา บุญเอี่ยม | ภาษาอังกฤษ 3 นางสาวกนกวลี เกิดศรี | การเรียนรู้เพื่อชีวิต 3 นางสาววรุณยุพา ปานอยู่ | ภาษาอังกฤษ 3 นางสาวกนกวลี เกิดศรี |
+| คาบที่ 2 09:30–10:30 | การอ่านและการเขียนเพื่อการสื่อสาร 3 นางรัตติญา บุญเอี่ยม | การอ่านและการเขียนเพื่อการสื่อสาร 3 นางรัตติญา บุญเอี่ยม | ครอบครัวของฉัน 3 นางรัตติญา บุญเอี่ยม | หนูน้อยนักเขียน 3 นางรัตติญา บุญเอี่ยม | นักวิทยาศาสตร์น้อย 3 นางสาวอุไรทิพย์ ชาวนา |
+| คาบที่ 3 10:30–11:30 | การอ่านและการเขียนเพื่อการสื่อสาร 3 นางรัตติญา บุญเอี่ยม | นักอนุรักษ์ตัวน้อย 3 นางสาวอุไรทิพย์ ชาวนา | คณิตศาสตร์ 3 นางนฤมล ลุ้ยอุไร | ภาษาอังกฤษ 3 นางสาวกนกวลี เกิดศรี | คณิตศาสตร์ 3 นางนฤมล ลุ้ยอุไร |
+| คาบที่ 4 12:30–13:30 | วิทยาการคำนวณ 3 นางสาวจินดารัตน์ ไชยชนะ | ศิลปะและวัฒนธรรม 3 นางรัตติญา บุญเอี่ยม | เสริมภาษาไทย 3 นางรัตติญา บุญเอี่ยม | คณิตศาสตร์ 3 นางนฤมล ลุ้ยอุไร | ลดเวลาเรียนเพิ่มเวลารู้ 3 นางรัตติญา บุญเอี่ยม |
+| คาบที่ 5 13:30–14:30 | ภาษาอังกฤษ 3 นางสาวกนกวลี เกิดศรี | คณิตศาสตร์ 3 นางนฤมล ลุ้ยอุไร | สุขศึกษาพลศึกษา 3 นางทัศนา พรมมา | ลดเวลาเรียนเพิ่มเวลารู้ 3 นางรัตติญา บุญเอี่ยม | พัฒนาผู้เรียน 3 นางรัตติญา บุญเอี่ยม |
+| คาบที่ 6 14:30–15:30 | ลดเวลาเรียนเพิ่มเวลารู้ 3 นางรัตติญา บุญเอี่ยม | ภาษาอังกฤษ 3 นางสาวกนกวลี เกิดศรี | การเรียนรู้เพื่อชีวิต 3 นางสาววรุณยุพา ปานอยู่ | ลูกเสือสำรอง 3 นางรัตติญา บุญเอี่ยม | สวดมนต์ 3 นางรัตติญา บุญเอี่ยม |
+| คาบที่ 7 15:30–16:00 | | | | | |
+
+ตารางเรียน
+ชั้น ป.4/1
+| คาบที่ 1 08:30–09:30 | ภาษาไทย 4 นางรัตติญา บุญเอี่ยม | ภาษาอังกฤษ 4 นางสาวกนกวลี เกิดศรี | วิทยาศาสตร์ 4 นางสาวอุไรทิพย์ ชาวนา | คณิตศาสตร์ 4 นางนฤมล ลุ้ยอุไร | ภาษาไทย 4 นางรัตติญา บุญเอี่ยม |
+| คาบที่ 2 09:30–10:30 | คณิตศาสตร์ 4 นางนฤมล ลุ้ยอุไร | วิทยาศาสตร์ 4 นางสาวอุไรทิพย์ ชาวนา | คณิตศาสตร์ 4 นางนฤมล ลุ้ยอุไร | สังคมและความเป็นพลเมือง 4 นางสาวจินดารัตน์ ไชยชนะ | คณิตศาสตร์ 4 นางนฤมล ลุ้ยอุไร |
+| คาบที่ 3 10:30–11:30 | เศรษฐกิจและการเงิน 4 นางสาวจินดารัตน์ ไชยชนะ | แนะแนว/จิตสาธารณะ 4 นางสายยนต์ บุญเหลือ | วิทยาการคำนวณ 4 นางสาวจินดารัตน์ ไชยชนะ | ภาษาไทย 4 นางรัตติญา บุญเอี่ยม | ภาษาอังกฤษ 4 นางสาวกนกวลี เกิดศรี |
+| คาบที่ 4 12:30–13:30 | ดนตรี 4 นางสาวอุไรทิพย์ ชาวนา | ลดเวลาเรียนเพิ่มเวลารู้ 4 นางเรณู ทองสอาด | ประวัติศาสตร์และท้องถิ่น 4 นางสาวกนกวลี เกิดศรี | สุขภาพกายใจเพื่อชีวิตที่สมดุล 4 นายศรัณญู พลเยี่ยม | เสริมวิทยาศาสตร์ 4 นางสายยนต์ บุญเหลือ |
+| คาบที่ 5 13:30–14:30 | ลดเวลาเรียนเพิ่มเวลารู้ 4 นางรัตติญา บุญเอี่ยม | การงานอาชีพ 4 นางทัศนา พรมมา | ภาษาไทย 4 นางรัตติญา บุญเอี่ยม | ภาษาอังกฤษ 4 นางสาวกนกวลี เกิดศรี | สังคมและความเป็นพลเมือง 4 นางสาวจินดารัตน์ ไชยชนะ |
+| คาบที่ 6 14:30–15:30 | เสริมภาษาอังกฤษ 4 นางสาวกนกวลี เกิดศรี | ศิลปะ 4 นางสาวอุไรทิพย์ ชาวนา | พลศึกษาเพื่อพัฒนาคุณภาพชีวิตกายและใจ 4 นายศรัณญู พลเยี่ยม | ลูกเสือสามัญ 4 นางสาวกนกวลี เกิดศรี | สวดมนต์ 4 นางสาวกนกวลี เกิดศรี |
+| คาบที่ 7 15:30–16:00 | | | | | |
+
+ตารางเรียน
+ชั้น ป.5/1
+| คาบที่ 1 08:30–09:30 | วิทยาศาสตร์ 5 นางสาวอุไรทิพย์ ชาวนา | ประวัติศาสตร์ 5 นางสาววรุณยุพา ปานอยู่ | ภาษาไทย 5 นางรัตติญา บุญเอี่ยม | ภาษาไทย 5 นางรัตติญา บุญเอี่ยม | หน้าที่พลเมือง 5 นางสายยนต์ บุญเหลือ |
+| คาบที่ 2 09:30–10:30 | ภาษาอังกฤษ 5 นางสาวกนกวลี เกิดศรี | คณิตศาสตร์ 5 นางนฤมล ลุ้ยอุไร | วิทยาศาสตร์ 5 นางสาวอุไรทิพย์ ชาวนา | สุขศึกษา 5 นายศรัณญู พลเยี่ยม | ภาษาไทย 5 นางรัตติญา บุญเอี่ยม |
+| คาบที่ 3 10:30–11:30 | คณิตศาสตร์ 5 นางนฤมล ลุ้ยอุไร | ภาษาไทย 5 นางรัตติญา บุญเอี่ยม | พละ 5 นายศรัณญู พลเยี่ยม | คณิตศาสตร์ 5 นางนฤมล ลุ้ยอุไร | การงานอาชีพ 5 นางทัศนา พรมมา |
+| คาบที่ 4 12:30–13:30 | สังคมศึกษา 5 นายณัฐพงศ์ นิ่มกลัด | วิทยาการคำนวณ 5 นางสาวจินดารัตน์ ไชยชนะ | คณิตศาสตร์ 5 นางนฤมล ลุ้ยอุไร | ภาษาอังกฤษ 5 นางสาวกนกวลี เกิดศรี | เสริมวิทยาศาสตร์ 5 นางสาวอุไรทิพย์ ชาวนา |
+| คาบที่ 5 13:30–14:30 | จิตสาธารณะ 5 นายศรัณญู พลเยี่ยม | สังคมศึกษา 5 นายณัฐพงศ์ นิ่มกลัด | ศิลปะ 5 นางสาวอุไรทิพย์ ชาวนา | การป้องกันการทุจริต 5 นางสาววาสิณี หมื่นจิตร | เสริมคณิตศาสตร์ 5 นางนฤมล ลุ้ยอุไร |
+| คาบที่ 6 14:30–15:30 | ดนตรี 5 นางสาวอุไรทิพย์ ชาวนา | แนะแนว 5 นางนฤมล ลุ้ยอุไร | ภาษาอังกฤษเพิ่มเติม 5 นางสาวกนกวลี เกิดศรี | ลูกเสือสามัญ 5 นางนฤมล ลุ้ยอุไร | สวดมนต์ 5 นางนฤมล ลุ้ยอุไร |
+| คาบที่ 7 15:30–16:00 | | | | | |
+
+ตารางเรียน
+ชั้น ป.6/1
+| คาบที่ 1 08:30–09:30 | สุขศึกษา 6 นายศรัณญู พลเยี่ยม | คณิตศาสตร์ 6 นางนฤมล ลุ้ยอุไร | คณิตศาสตร์ 6 นางนฤมล ลุ้ยอุไร | วิทยาศาสตร์ 6 นางสาวอุไรทิพย์ ชาวนา | ภาษาไทย 6 นางสาววาสิณี หมื่นจิตร |
+| คาบที่ 2 09:30–10:30 | วิทยาศาสตร์ 6 นางสาวอุไรทิพย์ ชาวนา | ภาษาอังกฤษ 6 นางสาวกนกวลี เกิดศรี | ภาษาไทย 6 นางสาววาสิณี หมื่นจิตร | คณิตศาสตร์ 6 นางนฤมล ลุ้ยอุไร | ภาษาอังกฤษเพิ่มเติม 6 นางสาวกนกวลี เกิดศรี |
+| คาบที่ 3 10:30–11:30 | ภาษาอังกฤษ 6 นางสาวกนกวลี เกิดศรี | การงานอาชีพ 6 นางทัศนา พรมมา | ประวัติศาสตร์ 6 นางสาวอุไรทิพย์ ชาวนา | สังคมศึกษา 6 นายศรัณญู พลเยี่ยม | การป้องกันการทุจริต 6 นางสาววาสิณี หมื่นจิตร |
+| คาบที่ 4 12:30–13:30 | ภาษาไทย 6 นางสาววาสิณี หมื่นจิตร | สังคมศึกษา 6 นายศรัณญู พลเยี่ยม | พละ 6 นายศรัณญู พลเยี่ยม | วิทยาการคำนวณ 6 นางสาวจินดารัตน์ ไชยชนะ | เสริมคณิตศาสตร์ 6 นางนฤมล ลุ้ยอุไร |
+| คาบที่ 5 13:30–14:30 | คณิตศาสตร์ 6 นางนฤมล ลุ้ยอุไร | ภาษาไทย 6 นางสาววาสิณี หมื่นจิตร | แนะแนว 6 นางสาววาสิณี หมื่นจิตร | ศิลปะ 6 นางสาวอุไรทิพย์ ชาวนา | ดนตรี 6 นางสาวอุไรทิพย์ ชาวนา |
+| คาบที่ 6 14:30–15:30 | จิตสาธารณะ 6 นางสายยนต์ บุญเหลือ | หน้าที่พลเมือง 6 นายณัฐพงศ์ นิ่มกลัด | เสริมวิทยาศาสร์ 6 นางสาวอุไรทิพย์ ชาวนา | ลูกเสือสามัญ 6 นางสาวอุไรทิพย์ ชาวนา | สวดมนต์ 6 นางสาวอุไรทิพย์ ชาวนา |
+| คาบที่ 7 15:30–16:00 | | | | | |
+
+ตารางเรียน
+ชั้น ม.1/1
+| คาบที่ 1 08:30–09:30 | คณิตศาสตร์ 1 นายณัฐพงศ์ นิ่มกลัด | ภาษาไทย 1 นางสาววาสิณี หมื่นจิตร | ภาษาไทย 1 นางสาววาสิณี หมื่นจิตร | สุขศึกษา 1 นายศรัณญู พลเยี่ยม | คณิตศาสตร์ 1 นายณัฐพงศ์ นิ่มกลัด |
+| คาบที่ 2 09:30–10:30 | ภาษาอังกฤษ 1 นางสาววรุณยุพา ปานอยู่ | ภาษาอังกฤษเพิ่มเติม 1 นางสาววรุณยุพา ปานอยู่ | ภาษาอังกฤษ 1 นางสาววรุณยุพา ปานอยู่ | คณิตศาสตร์ 1 นายณัฐพงศ์ นิ่มกลัด | ภาษาอังกฤษ 1 นางสาววรุณยุพา ปานอยู่ |
+| คาบที่ 3 10:30–11:30 | วิทยาศาสตร์ 1 นางสายยนต์ บุญเหลือ | คณิตศาสตร์ 1 นายณัฐพงศ์ นิ่มกลัด | ประวัติศาสตร์ 1 นายณัฐพงศ์ นิ่มกลัด | วิทยาศาสตร์ 1 นางสายยนต์ บุญเหลือ | แนะแนว 1 นางสาวจินดารัตน์ ไชยชนะ |
+| คาบที่ 4 12:30–13:30 | สังคมศึกษา 1 นางสายยนต์ บุญเหลือ | วิทยาศาสตร์ 1 นางสายยนต์ บุญเหลือ | เคมีน่ารู้ นางสายยนต์ บุญเหลือ | สังคมศึกษา 1 นางสายยนต์ บุญเหลือ | ภาษาไทย 1 นางสาววาสิณี หมื่นจิตร |
+| คาบที่ 5 13:30–14:30 | ภาษาไทยเพิ่มเติม 1 นางสาววาสิณี หมื่นจิตร | วิทยาการคำนวณ 1 นางสาวจินดารัตน์ ไชยชนะ | พละ 1 นายศรัณญู พลเยี่ยม | ดนตรี 1 นายศรัณญู พลเยี่ยม | ศิลปะ 1 นายศรัณญู พลเยี่ยม |
+| คาบที่ 6 14:30–15:30 | หน้าที่พลเมือง 1 นายณัฐพงศ์ นิ่มกลัด | จิตสาธารณะ 1 นางสายยนต์ บุญเหลือ | การงานอาชีพ 1 นายพลายงาม บุญญะ | การป้องกันการทุจริต 1 นายณัฐพงศ์ นิ่มกลัด | สังคมศึกษา 1 นางสายยนต์ บุญเหลือ |
+| คาบที่ 7 15:30–16:00 | | | | ลูกเสือสามัญรุ่นใหญ่ 1 นายศรัณญู พลเยี่ยม | |
+
+ตารางเรียน
+ชั้น ม.2/1
+| คาบที่ 1 08:30–09:30 | ภาษาอังกฤษ 3 นางสาววรุณยุพา ปานอยู่ | คณิตศาสตร์ 3 นายณัฐพงศ์ นิ่มกลัด | สังคมศึกษา 3 นางสาวจินดารัตน์ ไชยชนะ | วิทยาศาสตร์ 3 นางสายยนต์ บุญเหลือ | ศิลปะ 1 นายศรัณญู พลเยี่ยม |
+| คาบที่ 2 09:30–10:30 | สังคมศึกษา 3 นางสาวจินดารัตน์ ไชยชนะ | วิทยาศาสตร์ 3 นางสายยนต์ บุญเหลือ | คณิตศาสตร์ 3 นายณัฐพงศ์ นิ่มกลัด | ภาษาอังกฤษ 3 นางสาววรุณยุพา ปานอยู่ | สังคมศึกษา 3 นางสาวจินดารัตน์ ไชยชนะ |
+| คาบที่ 3 10:30–11:30 | คณิตศาสตร์ 3 นายณัฐพงศ์ นิ่มกลัด | พละ 3 นายศรัณญู พลเยี่ยม | ภาษาอังกฤษ 3 นางสาววรุณยุพา ปานอยู่ | คณิตศาสตร์ 3 นายณัฐพงศ์ นิ่มกลัด | วิทยาศาสตร์ 3 นางสายยนต์ บุญเหลือ |
+| คาบที่ 4 12:30–13:30 | สุขศึกษา 3 นายศรัณญู พลเยี่ยม | ภาษาอังกฤษเพิ่มเติม 3 นางสาววรุณยุพา ปานอยู่ | ภาษาไทย 3 นางสาววาสิณี หมื่นจิตร | ภาษาไทย 3 นางสาววาสิณี หมื่นจิตร | จิตสาธารณะ 3 นายณัฐพงศ์ นิ่มกลัด |
+| คาบที่ 5 13:30–14:30 | แนะแนว 3 นางสาวจินดารัตน์ ไชยชนะ | เริ่มต้นกับโครงงานวิทยาศาสตร์ 1 นางสายยนต์ บุญเหลือ | หน้าที่พลเมือง 3 นายณัฐพงศ์ นิ่มกลัด | วิทยาการคำนวณ 2 นางสาวจินดารัตน์ ไชยชนะ | ภาษาไทย 3 นางสาววาสิณี หมื่นจิตร |
+| คาบที่ 6 14:30–15:30 | ดนตรี 3 นายศรัณญู พลเยี่ยม | การงานอาชีพ 3 นายพลายงาม บุญญะ | ภาษาไทยเพิ่มเติม 3 นางสาววาสิณี หมื่นจิตร | การป้องกันการทุจริต 3 นางสาววรุณยุพา ปานอยู่ | ประวัติศาสตร์ 3 นางสาววรุณยุพา ปานอยู่ |
+| คาบที่ 7 15:30–16:00 | | | | ลูกเสือสามัญรุ่นใหญ่ 3 นายณัฐพงศ์ นิ่มกลัด | สวดมนต์ |
+
+ตารางเรียน
+ชั้น ม.3/1
+| คาบที่ 1 08:30–09:30 | วิทยาศาสตร์ 5 นางสายยนต์ บุญเหลือ | ดนตรี 5 นายศรัณญู พลเยี่ยม | คณิตศาสตร์ 5 นายณัฐพงศ์ นิ่มกลัด | ภาษาไทย 5 นางสาววาสิณี หมื่นจิตร | ภาษาอังกฤษ 5 นางสาววรุณยุพา ปานอยู่ |
+| คาบที่ 2 09:30–10:30 | ภาษาไทย 5 นางสาววาสิณี หมื่นจิตร | คณิตศาสตร์ 5 นายณัฐพงศ์ นิ่มกลัด | สังคมศึกษา 5 นางสาวจินดารัตน์ ไชยชนะ | วิทยาศาสตร์ 5 นางสายยนต์ บุญเหลือ | คณิตศาสตร์ 5 นายณัฐพงศ์ นิ่มกลัด |
+| คาบที่ 3 10:30–11:30 | ศิลปะ 5 นายศรัณญู พลเยี่ยม | ภาษาอังกฤษ 5 นางสาววรุณยุพา ปานอยู่ | วิทยาศาสตร์ 5 นางสายยนต์ บุญเหลือ | วิทยาการคำนวณ 3 นางสาวจินดารัตน์ ไชยชนะ | การงานอาชีพ 5 นายพลายงาม บุญญะ |
+| คาบที่ 4 12:30–13:30 | ภาษาอังกฤษ 5 นางสาววรุณยุพา ปานอยู่ | ภาษาไทย 5 นางสาววาสิณี หมื่นจิตร | การป้องกันการทุจริต 5 นายณัฐพงศ์ นิ่มกลัด | คณิตศาสตร์ 5 นายณัฐพงศ์ นิ่มกลัด | สุขศึกษา 5 นายศรัณญู พลเยี่ยม |
+| คาบที่ 5 13:30–14:30 | จิตสาธารณะ 5 นางสายยนต์ บุญเหลือ | พละ 5 นายศรัณญู พลเยี่ยม | เชื้อเพลิงกับพลังงาน 1 นางสายยนต์ บุญเหลือ | ภาษาอังกฤษเพิ่มเติม 5 นางสาววรุณยุพา ปานอยู่ | หน้าที่พลเมือง 5 นายณัฐพงศ์ นิ่มกลัด |
+| คาบที่ 6 14:30–15:30 | สังคมศึกษา 5 นางสาวจินดารัตน์ ไชยชนะ | ประวัติศาสตร์ 5 นางสาวจินดารัตน์ ไชยชนะ | แนะแนว 5 นางสาวจินดารัตน์ ไชยชนะ | สังคมศึกษา 5 นางสาวจินดารัตน์ ไชยชนะ | ภาษาไทยเพิ่มเติม 5 นางสาววาสิณี หมื่นจิตร |
+| คาบที่ 7 15:30–16:00 | | | | ลูกเสือสามัญรุ่นใหญ่ 5 นางสายยนต์ บุญเหลือ | |
+        `;
+
+        // 4. Logic Functions
+        function getTeacherStyle(cellText) {
+            for (let t of teachers) {
+                if (cellText.includes(t.name)) return t.colorClass;
+            }
+            return "bg-slate-50 border-slate-200 text-slate-500"; 
+        }
+
+        function addEmoji(subjectName) {
+            for (let e of emojis) {
+                if (e.keywords.some(k => subjectName.includes(k))) {
+                    return `<span class="text-xl mr-1">${e.emoji}</span> ` + subjectName;
+                }
+            }
+            return `<span class="text-xl mr-1">📚</span> ` + subjectName;
+        }
+
+        function parseCell(rawText) {
+            const text = rawText.trim();
+            if (!text) return { isEmpty: true };
+            
+            const match = text.match(/^(.*?)\s+((?:นาง|นาย|นางสาว).*)$/);
+            if (match) {
+                return {
+                    isEmpty: false,
+                    subject: match[1].trim(),
+                    teacher: match[2].trim()
+                };
+            }
+            return {
+                isEmpty: false,
+                subject: text,
+                teacher: ""
+            };
+        }
+
+        function processData() {
+            const classesRaw = rawMarkdown.split('ตารางเรียน').filter(b => b.trim().length > 0);
+            const scheduleData = [];
+
+            classesRaw.forEach(block => {
+                const lines = block.trim().split('\n');
+                const gradeLine = lines.find(l => l.includes('ชั้น'));
+                if(!gradeLine) return;
+                
+                const grade = gradeLine.replace('ชั้น', '').trim();
+                const tableLines = lines.filter(l => l.trim().startsWith('| คาบที่'));
+                
+                const rows = tableLines.map(line => {
+                    let parts = line.split('|');
+                    parts.shift();
+                    parts.pop();
+                    parts = parts.map(s => s.trim());
+                    return parts;
+                });
+
+                scheduleData.push({ grade, rows });
+            });
+            return scheduleData;
+        }
+
+        // 5. UI Rendering
+        const data = processData();
+
+        function renderLegend() {
+            const container = document.getElementById('legend-container');
+            teachers.forEach(t => {
+                const tag = document.createElement('div');
+                tag.className = `flex items-center px-3 py-1.5 rounded-full border text-sm font-medium ${t.colorClass}`;
+                tag.innerHTML = `<span>${t.icon}</span> <span class="ml-2">${t.name}</span>`;
+                container.appendChild(tag);
+            });
+        }
+
+        function renderTabs() {
+            const container = document.getElementById('tabs-container');
+            data.forEach((cls, index) => {
+                const btn = document.createElement('button');
+                btn.className = `tab-btn px-5 py-2 rounded-full font-semibold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 transition-colors shadow-sm flex items-center gap-2 ${index === 0 ? 'active' : ''}`;
+                
+                const imgSrc = classImages[cls.grade] || `https://placehold.co/100x100/e2e8f0/64748b?text=${cls.grade}`;
+                
+                btn.innerHTML = `
+                    <img src="${imgSrc}" alt="${cls.grade}" class="w-8 h-8 rounded-full border border-slate-200 bg-white object-cover">
+                    <span class="tab-label">ชั้น ${cls.grade}</span>
+                `;
+                
+                btn.onclick = () => switchTab(index, btn);
+                container.appendChild(btn);
+            });
+        }
+
+        function renderTables() {
+            const container = document.getElementById('schedule-container');
+            const days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์'];
+
+            data.forEach((cls, index) => {
+                const tableWrapper = document.createElement('div');
+                tableWrapper.id = `table-${index}`;
+                tableWrapper.className = `w-full overflow-x-auto hide-scroll ${index === 0 ? 'block' : 'hidden'}`;
+                
+                const imgSrc = classImages[cls.grade] || `https://placehold.co/100x100/e2e8f0/64748b?text=${cls.grade}`;
+                
+                let html = `
+                    <div class="min-w-[1000px] p-8 bg-white" id="capture-area-${index}">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="flex items-center gap-3 border-l-4 border-blue-500 pl-4">
+                                <img src="${imgSrc}" alt="${cls.grade}" class="w-10 h-10 rounded-full shadow-sm border border-slate-200 bg-white object-cover">
+                                <h3 class="text-2xl font-bold text-slate-800">ตารางเรียนชั้น ${cls.grade}</h3>
+                            </div>
+                            <div class="text-slate-500 font-medium">โรงเรียนวัดเสนาสน์ ภาคเรียนที่ 1/2569</div>
+                        </div>
+                        <div class="grid grid-cols-6 gap-3">
+                            <!-- Headers -->
+                            <div class="bg-slate-800 text-white p-3 rounded-xl text-center font-semibold shadow-md flex items-center justify-center">🕒 คาบ / วัน</div>
+                `;
+                
+                days.forEach(day => {
+                    html += `<div class="bg-slate-700 text-white p-3 rounded-xl text-center font-semibold shadow-md">${day}</div>`;
+                });
+
+                // Rows
+                cls.rows.forEach(row => {
+                    const timeParts = row[0].split(' ');
+                    const period = timeParts[0] + ' ' + timeParts[1]; 
+                    const timeSpan = timeParts[2] || '';
+
+                    html += `
+                        <div class="bg-slate-100 p-3 rounded-xl flex flex-col items-center justify-center border border-slate-200 shadow-sm text-center">
+                            <span class="font-bold text-slate-700">${period}</span>
+                            <span class="text-sm text-slate-500">${timeSpan}</span>
+                        </div>
+                    `;
+
+                    // Cells for Mon-Fri
+                    for (let i = 1; i <= 5; i++) {
+                        const cellData = parseCell(row[i] || "");
+                        
+                        if (cellData.isEmpty) {
+                            html += `<div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-center text-slate-400 text-sm italic">ว่าง</div>`;
+                        } else {
+                            const styleClass = getTeacherStyle(cellData.teacher);
+                            const subjectWithEmoji = addEmoji(cellData.subject);
+                            
+                            html += `
+                                <div class="schedule-cell rounded-xl p-3 border shadow-sm flex flex-col justify-center items-center text-center ${styleClass}">
+                                    <div class="font-bold text-sm md:text-base leading-tight mb-1">${subjectWithEmoji}</div>
+                                    ${cellData.teacher ? `<div class="text-xs opacity-80 mt-1 flex items-center gap-1"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>${cellData.teacher}</div>` : ''}
+                                </div>
+                            `;
+                        }
+                    }
+                });
+
+                html += `</div></div>`;
+                tableWrapper.innerHTML = html;
+                container.appendChild(tableWrapper);
+            });
+        }
+
+        function switchTab(index, btnElement) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            data.forEach((_, i) => {
+                document.getElementById(`table-${i}`).classList.add('hidden');
+                document.getElementById(`table-${i}`).classList.remove('block');
+            });
+            document.getElementById(`table-${index}`).classList.remove('hidden');
+            document.getElementById(`table-${index}`).classList.add('block');
+        }
+
+        // 6. Download as Image Logic
+        function downloadAsImage() {
+            // หา Tab ที่กำลัง Active อยู่เพื่อดึงชื่อชั้น
+            const activeTab = document.querySelector('.tab-btn.active .tab-label');
+            const gradeName = activeTab ? activeTab.innerText.trim().replace(/\s+/g, '_') : 'ตารางเรียน';
+            const fileName = `ตารางเรียน_${gradeName}.png`;
+
+            // หา Container ของตารางที่แสดงผลอยู่
+            const activeTableWrapper = document.querySelector('#schedule-container > div.block');
+            if (!activeTableWrapper) return alert("ไม่พบตารางเรียนที่กำลังเปิดอยู่");
+            
+            // หา Element พื้นที่ตารางด้านใน (เพื่อให้ภาพออกมาพื้นหลังขาวพอดี ขอบเขตไม่กว้างเกินไป)
+            const captureArea = activeTableWrapper.firstElementChild;
+
+            // แจ้งผู้ใช้ว่ากำลังประมวลผล (ถ้าเครื่องช้า)
+            const originalCursor = document.body.style.cursor;
+            document.body.style.cursor = 'wait';
+
+            // ใช้ html2canvas เพื่อแปลง DOM เป็น Canvas
+            html2canvas(captureArea, {
+                scale: 2, // เพิ่มความละเอียดภาพ (2x)
+                useCORS: true, // อนุญาตให้ดึงรูปจากภายนอก (เช่น Dicebear)
+                backgroundColor: '#ffffff' // กำหนดพื้นหลังเป็นสีขาว
+            }).then(canvas => {
+                // คืนค่า cursor
+                document.body.style.cursor = originalCursor;
+
+                // สร้าง Link สำหรับดาวน์โหลด
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = canvas.toDataURL('image/png');
+                link.click(); // จำลองการคลิกเพื่อดาวน์โหลด
+            }).catch(err => {
+                document.body.style.cursor = originalCursor;
+                console.error("Error capturing image:", err);
+                alert("เกิดข้อผิดพลาดในการบันทึกรูปภาพ");
+            });
+        }
+
+        // Initialize
+        renderLegend();
+        renderTabs();
+        renderTables();
+    </script>
+</body>
+</html>
